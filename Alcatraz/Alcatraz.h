@@ -27,6 +27,7 @@
 
 @property (nonatomic, retain) ATZPluginWindowController *windowController;
 @property (nonatomic, strong) NSBundle *bundle;
+@property (nonatomic, strong) NSMenuItem *alcatrazDockMenuItem;
 
 + (Alcatraz *)sharedPlugin;
 

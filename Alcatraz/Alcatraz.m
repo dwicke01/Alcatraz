@@ -30,12 +30,6 @@
 
 static Alcatraz *sharedPlugin;
 
-@interface Alcatraz ()
-
-@property (nonatomic, strong) NSMenuItem *alcatrazDockMenuItem;
-
-@end
-
 @implementation Alcatraz
 
 + (void)pluginDidLoad:(NSBundle *)plugin {
@@ -61,8 +55,6 @@ static Alcatraz *sharedPlugin;
     if (self = [super init]) {
         self.bundle = plugin;
         [[NSOperationQueue mainQueue] addOperationWithBlock:^{
-            //self.dockMenuItemManager = [[ATZDockMenuItemManager alloc] init];
-            //self.dockMenuItemManager.delegate = self;
             [self createMenuItem];
             self.alcatrazDockMenuItem = [[NSMenuItem alloc] initWithTitle:@"Package Manager" action:@selector(bringPackageManagerToFront) keyEquivalent:@""];
             self.alcatrazDockMenuItem.target = self;
@@ -130,27 +122,20 @@ static Alcatraz *sharedPlugin;
     Class xcodeAppDelegateClass = NSClassFromString(@"IDEApplicationController");
     
     [xcodeAppDelegateClass aspect_hookSelector:@selector(applicationDockMenu:) withOptions:AspectPositionInstead usingBlock:^(id<AspectInfo> info, NSEvent *event) {
-        
         NSMenu *dockMenu;
         NSInvocation *invocation = info.originalInvocation;
         [invocation invoke];
         [invocation getReturnValue:&dockMenu];
-        
         CFRetain((__bridge CFTypeRef)(dockMenu));
-        
         if (self.windowController.window != nil && [self.windowController.window isVisible]) {
-            
             if ([self.alcatrazDockMenuItem menu]) {
                 [[self.alcatrazDockMenuItem menu] removeItem:self.alcatrazDockMenuItem];
             }
-            
             NSUInteger indexOfOpenDeveloperTools = [dockMenu indexOfItemWithTitle:@"Open Developer Tool"];
-            
             [dockMenu insertItem:[NSMenuItem separatorItem] atIndex:indexOfOpenDeveloperTools];
             [dockMenu insertItem:self.alcatrazDockMenuItem atIndex:indexOfOpenDeveloperTools];
         }
         [invocation setReturnValue:&dockMenu];
-        
     }error:NULL];
 }
 
