@@ -26,7 +26,15 @@
 #import "ATZAlcatrazPackage.h"
 #import "ATZGit.h"
 
+#import "Aspects.h"
+
 static Alcatraz *sharedPlugin;
+
+@interface Alcatraz ()
+
+@property (nonatomic, strong) NSMenuItem *alcatrazDockMenuItem;
+
+@end
 
 @implementation Alcatraz
 
@@ -53,8 +61,12 @@ static Alcatraz *sharedPlugin;
     if (self = [super init]) {
         self.bundle = plugin;
         [[NSOperationQueue mainQueue] addOperationWithBlock:^{
-
+            //self.dockMenuItemManager = [[ATZDockMenuItemManager alloc] init];
+            //self.dockMenuItemManager.delegate = self;
             [self createMenuItem];
+            self.alcatrazDockMenuItem = [[NSMenuItem alloc] initWithTitle:@"Package Manager" action:@selector(bringPackageManagerToFront) keyEquivalent:@""];
+            self.alcatrazDockMenuItem.target = self;
+            [self swizzleApplicationDockMenu];
         }];
         [self updateAlcatraz];
     }
@@ -109,6 +121,41 @@ static Alcatraz *sharedPlugin;
     [queue addOperationWithBlock:^{
         [ATZAlcatrazPackage update];
     }];
+}
+
+
+#pragma Dock Menu Item Methods
+
+-(void)swizzleApplicationDockMenu {
+    Class xcodeAppDelegateClass = NSClassFromString(@"IDEApplicationController");
+    
+    [xcodeAppDelegateClass aspect_hookSelector:@selector(applicationDockMenu:) withOptions:AspectPositionInstead usingBlock:^(id<AspectInfo> info, NSEvent *event) {
+        
+        NSMenu *dockMenu;
+        NSInvocation *invocation = info.originalInvocation;
+        [invocation invoke];
+        [invocation getReturnValue:&dockMenu];
+        
+        CFRetain((__bridge CFTypeRef)(dockMenu));
+        
+        if (self.windowController.window != nil && [self.windowController.window isVisible]) {
+            
+            if ([self.alcatrazDockMenuItem menu]) {
+                [[self.alcatrazDockMenuItem menu] removeItem:self.alcatrazDockMenuItem];
+            }
+            
+            NSUInteger indexOfOpenDeveloperTools = [dockMenu indexOfItemWithTitle:@"Open Developer Tool"];
+            
+            [dockMenu insertItem:[NSMenuItem separatorItem] atIndex:indexOfOpenDeveloperTools];
+            [dockMenu insertItem:self.alcatrazDockMenuItem atIndex:indexOfOpenDeveloperTools];
+        }
+        [invocation setReturnValue:&dockMenu];
+        
+    }error:NULL];
+}
+
+-(void)bringPackageManagerToFront {
+    [[self.windowController window] makeKeyAndOrderFront:self];
 }
 
 
